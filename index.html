@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Obrolan Gemini AI - Puter.js</title>
+    <!-- Memuat Library Jaringan Utama Puter.js -->
+    <script src="https://puter.com"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 85vh;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #0078d4;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chat-header .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #24b47e;
+            border-radius: 50%;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #fcfcfc;
+        }
+        .message {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.4;
+            font-size: 0.95rem;
+            word-wrap: break-word;
+        }
+        .message.user {
+            background: #0078d4;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        .message.ai {
+            background: #e9ecef;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        .message.system {
+            background: #ffe3e3;
+            color: #d92525;
+            align-self: center;
+            font-size: 0.85rem;
+            max-width: 90%;
+            text-align: center;
+        }
+        .chat-input-area {
+            padding: 15px;
+            background: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .chat-input-area input:focus {
+            border-color: #0078d4;
+        }
+        .chat-input-area button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .chat-input-area button:hover {
+            background: #005a9e;
+        }
+        .chat-input-area button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <!-- Bagian Atas / Header -->
+        <div class="chat-header">
+            <div class="status-dot"></div>
+            <span>Gemini AI Assistant</span>
+        </div>
+
+        <!-- Wadah Pesan Obrolan -->
+        <div class="chat-messages" id="chatbox">
+            <div class="message ai">Halo! Saya asisten AI Gemini. Ada yang bisa saya bantu hari ini?</div>
+        </div>
+
+        <!-- Kolom Input Pengiriman -->
+        <div class="chat-input-area">
+            <input type="text" id="userInput" placeholder="Ketik pesan Anda di sini..." onkeypress="handleKeyPress(event)">
+            <button id="sendBtn" onclick="kirimPesan()">Kirim</button>
+        </div>
+    </div>
+
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        // Fungsi pembantu untuk membuat balon obrolan baru di layar
+        function buatGelembungPesan(teks, tipe) {
+            const elemenPesan = document.createElement('div');
+            elemenPesan.classList.add('message', tipe);
+            elemenPesan.innerText = teks;
+            chatbox.appendChild(elemenPesan);
+            
+            // Otomatis gulir layar ke bagian paling bawah setiap ada pesan baru
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Fungsi utama mengirim pesan dan memanggil API Puter
+        async function kirimPesan() {
+            const prompt = userInput.value.trim();
+            if (!prompt) return; // Jika kosong, jangan kirim apa pun
+
+            // Tampilkan pesan pengguna di layar obrolan
+            buatGelembungPesan(prompt, 'user');
+            userInput.value = ''; // Kosongkan kembali kotak input
+
+            // Matikan tombol sementara agar pengguna tidak mengirim dobel chat saat memproses
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            // Berikan indikator visual animasi bahwa AI sedang merespons
+            buatGelembungPesan("Sedang mengetik...", 'ai');
+            const penandaTeksKetik = chatbox.lastChild;
+
+            try {
+                // INTEGRASI PUTER.JS: Memanggil model AI Gemini tanpa perlu token/API key statis
+                const respon = await puter.ai.chat(prompt, { model: 'gemini-3.5-flash' });
+                
+                // Ganti pesan "Sedang mengetik..." dengan jawaban asli dari Gemini
+                penandaTeksKetik.innerText = respon.message.content;
+            } catch (error) {
+                // Tangani kegagalan sistem jaringan atau limit kuota peranti
+                penandaTeksKetik.remove();
+                buatGelembungPesan("Sistem gagal merespons: " + error.message, 'system');
+            } finally {
+                // Aktifkan kembali kontrol input setelah proses selesai
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        // Fungsi pendukung agar pesan terkirim ketika menekan tombol 'Enter' pada keyboard
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                kirimPesan();
+            }
+        }
+    </script>
+</body>
+</html>
